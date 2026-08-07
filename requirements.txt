@@ -1,0 +1,7 @@
+streamlit
+psycopg2-binary
+pgvector
+sentence-transformers
+huggingface_hub
+langchain
+langchain-huggingface

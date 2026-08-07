@@ -1,7 +1,8 @@
 import os
 
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import create_structured_chat_agent, AgentExecutor
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
@@ -80,10 +81,23 @@ tools = [
     ),
 ]
 
-agent_executor = initialize_agent(
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a helpful faculty workload and timetable assistant. "
+            "Use the provided tools to answer user queries accurately.",
+        ),
+        ("human", "{input}"),
+        MessagesPlaceholder(variable_name="agent_scratchpad"),
+    ]
+)
+
+agent = create_structured_chat_agent(chat_model, tools, prompt)
+
+agent_executor = AgentExecutor(
+    agent=agent,
     tools=tools,
-    llm=chat_model,
-    agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
     verbose=True,
     handle_parsing_errors=True,
     max_iterations=4,

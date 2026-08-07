@@ -3,5 +3,5 @@ psycopg2-binary
 pgvector
 sentence-transformers
 huggingface_hub
-langchain
+langchain<1.0.0
 langchain-huggingface

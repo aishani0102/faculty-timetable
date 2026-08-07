@@ -2,7 +2,7 @@ import os
 
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain.agents import create_structured_chat_agent, AgentExecutor
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
@@ -120,8 +120,7 @@ Action:
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", system_template),
-        ("human", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ("human", "{input}\n\n{agent_scratchpad}"),
     ]
 )
 

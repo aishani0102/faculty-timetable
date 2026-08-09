@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import streamlit as st
+import pandas as pd
+import altair as alt
 
 from agent import answer
 from tools import dataset_summary, get_connection, report_tool, clash_tool
@@ -48,8 +51,16 @@ with st.sidebar:
         
         st.divider()
         st.subheader("Workload by Department")
-        st.bar_chart(get_department_workload())
+        st.divider()
+        st.subheader("Workload by Department")
         
+        # Create a custom chart that forces the Y-axis to start at 0
+        df_chart = get_department_workload().reset_index()
+        chart = alt.Chart(df_chart).mark_bar().encode(
+            x=alt.X('Department', axis=alt.Axis(labelAngle=0)), # Keeps department names flat and readable
+            y=alt.Y('Total Hours', scale=alt.Scale(domainMin=0)) # Strictly starts the axis at 0
+        )
+        st.altair_chart(chart, use_container_width=True)        
     except Exception:
         st.caption("Set DATABASE_URL and run ingest.py to see dataset stats here.")
         

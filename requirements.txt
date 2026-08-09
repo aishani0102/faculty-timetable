@@ -6,3 +6,4 @@ huggingface_hub
 langchain<1.0.0
 langchain-huggingface
 pandas
+altair

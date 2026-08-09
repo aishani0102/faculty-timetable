@@ -51,14 +51,12 @@ with st.sidebar:
         
         st.divider()
         st.subheader("Workload by Department")
-        st.divider()
-        st.subheader("Workload by Department")
         
         # Create a custom chart that forces the Y-axis to start at 0
         df_chart = get_department_workload().reset_index()
         chart = alt.Chart(df_chart).mark_bar().encode(
-            x=alt.X('Department', axis=alt.Axis(labelAngle=0)), # Keeps department names flat and readable
-            y=alt.Y('Total Hours', scale=alt.Scale(domainMin=0)) # Strictly starts the axis at 0
+            x=alt.X('Department', axis=alt.Axis(labelAngle=0)), 
+            y=alt.Y('Total Hours', scale=alt.Scale(domainMin=0))
         )
         st.altair_chart(chart, use_container_width=True)        
     except Exception:

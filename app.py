@@ -7,7 +7,6 @@ import altair as alt
 from agent import answer
 from tools import dataset_summary, get_connection, report_tool, clash_tool
 
-# Changed layout to "wide" to give the charts and tables more breathing room
 st.set_page_config(page_title="Faculty Workload & Timetable Agent", page_icon="🗓️", layout="wide")
 
 st.markdown(
@@ -62,8 +61,6 @@ with st.sidebar:
     except Exception:
         st.caption("Set DATABASE_URL and run ingest.py to see dataset stats here.")
         
-    st.divider()
-    st.caption("LangChain agent over Postgres + pgvector. No fine-tuning.")
 
 st.title("Faculty Workload & Timetable Agent")
 st.caption("Ask about faculty availability, workload, or scheduling clashes, in plain English.")

@@ -1,8 +1,7 @@
 import os
 
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-from langchain.agents import create_structured_chat_agent, AgentExecutor
-from langchain_core.prompts import ChatPromptTemplate
+from langchain.agents import initialize_agent, AgentType
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
@@ -13,6 +12,7 @@ MODEL = "Qwen/Qwen2.5-7B-Instruct"
 
 llm = HuggingFaceEndpoint(
     repo_id=MODEL,
+    provider="featherless-ai",
     task="text-generation",
     huggingfacehub_api_token=HF_TOKEN,
     max_new_tokens=256,
@@ -81,54 +81,10 @@ tools = [
     ),
 ]
 
-system_template = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:
-
-{tools}
-
-Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
-
-Valid "action" values: "Final Answer" or {tool_names}
-
-Provide only ONE action per $JSON_BLOB, as shown:
-
-```
-{{
-  "action": $TOOL_NAME,
-  "action_input": $INPUT
-}}
-```
-
-Follow this format:
-
-Question: input question to answer
-Thought: consider previous and subsequent steps
-Action:
-```
-$JSON_BLOB
-```
-Observation: action result
-... (repeat Thought/Action/Observation N times)
-Thought: I know what to respond
-Action:
-```
-{{
-  "action": "Final Answer",
-  "action_input": "Final response to human"
-}}
-```"""
-
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_template),
-        ("human", "{input}\n\n{agent_scratchpad}"),
-    ]
-)
-
-agent = create_structured_chat_agent(chat_model, tools, prompt)
-
-agent_executor = AgentExecutor(
-    agent=agent,
+agent_executor = initialize_agent(
     tools=tools,
+    llm=chat_model,
+    agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
     verbose=True,
     handle_parsing_errors=True,
     max_iterations=4,

@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import psycopg2
@@ -7,11 +8,31 @@ from sentence_transformers import SentenceTransformer
 DATABASE_URL = os.environ["DATABASE_URL"]
 _embedder = None
 
+VALID_DAYS = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+TIME_FORMATS = ["%H:%M", "%H:%M:%S", "%I:%M %p", "%I %p", "%I:%M%p"]
+
 
 def get_connection():
     conn = psycopg2.connect(DATABASE_URL)
     register_vector(conn)
     return conn
+
+
+def normalize_day(day: str) -> str:
+    normalized = day.strip().capitalize()
+    if normalized not in VALID_DAYS:
+        raise ValueError(f"'{day}' is not a recognized day of the week (expected e.g. 'Tuesday')")
+    return normalized
+
+
+def normalize_time(time_str: str) -> str:
+    cleaned = time_str.strip()
+    for fmt in TIME_FORMATS:
+        try:
+            return datetime.datetime.strptime(cleaned, fmt).strftime("%H:%M:%S")
+        except ValueError:
+            continue
+    raise ValueError(f"'{time_str}' is not a recognized time (expected 24-hour format, e.g. '14:00')")
 
 
 def _get_embedder():
@@ -23,6 +44,8 @@ def _get_embedder():
 
 def timetable_tool(day: str, time: str):
     """Who is teaching, and who is free, at a given day and time."""
+    day = normalize_day(day)
+    time = normalize_time(time)
     conn = get_connection()
     with conn.cursor() as cur:
         cur.execute(

@@ -6,7 +6,7 @@ from langchain.agents import initialize_agent, AgentType
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from tools import timetable_tool, report_tool, clash_tool, rag_tool
+from tools import timetable_tool, report_tool, clash_tool, rag_tool, room_status
 
 HF_TOKEN = os.environ["HF_TOKEN"]
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
@@ -34,6 +34,12 @@ class ReportInput(BaseModel):
 
 class RagInput(BaseModel):
     query: str = Field(description="The policy question to search for")
+
+
+class RoomInput(BaseModel):
+    room: str = Field(description="Room number, e.g. 305")
+    day: str = Field(description="Day of the week, e.g. Tuesday")
+    time: str = Field(description="24-hour time, e.g. 14:00")
 
 
 def _timetable(day: str, time: str) -> str:
@@ -70,6 +76,20 @@ def _rag(query: str) -> str:
         return "Could not search policies due to a database error."
 
 
+def _room(room: str, day: str, time: str) -> str:
+    try:
+        data = room_status(room, day, time)
+    except ValueError as e:
+        return f"Could not check that room: {e}"
+    except psycopg2.Error:
+        return "Could not check that room: the room, day, or time given wasn't understood."
+    if not data["occupants"]:
+        return f"Room {data['room']} is free at that time."
+    if data["clash"]:
+        return f"Room {data['room']} is double-booked at that time: {data['occupants']}."
+    return f"Room {data['room']} is occupied: {data['occupants']}."
+
+
 tools = [
     StructuredTool.from_function(
         func=_timetable,
@@ -93,6 +113,12 @@ tools = [
         name="policy_search",
         description="Look up university scheduling policies and rules.",
         args_schema=RagInput,
+    ),
+    StructuredTool.from_function(
+        func=_room,
+        name="room_status",
+        description="Check who is in a specific room at a given day and time, or whether it's free. Use this for any question about a room number.",
+        args_schema=RoomInput,
     ),
 ]
 

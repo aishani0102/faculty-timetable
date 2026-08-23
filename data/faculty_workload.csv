@@ -1,0 +1,11 @@
+faculty_id,name,department,course,hours_per_week
+F101,Prof. Sharma,CSE,Data Structures,6
+F102,Prof. Mehta,CSE,AI & ML,8
+F103,Prof. Rao,EEE,Circuits,5
+F104,Prof. Iyer,ME,Fluid Mechanics,7
+F105,Prof. Nair,CSE,Operating Systems,9
+F106,Prof. Gupta,ECE,Digital Signals,10
+F107,Prof. Verma,EEE,Power Systems,6
+F108,Prof. Khan,ME,Thermodynamics,8
+F109,Prof. Desai,CSE,Database Systems,7
+F110,Prof. Bose,ECE,Microprocessors,11

@@ -1,0 +1,15 @@
+day,start_time,end_time,course,faculty_id,room
+Monday,09:00,10:00,Data Structures,F101,201
+Monday,10:00,11:00,AI & ML,F102,202
+Monday,11:00,12:00,Operating Systems,F105,201
+Monday,09:00,10:00,Digital Signals,F106,301
+Tuesday,14:00,15:00,Circuits,F103,305
+Tuesday,10:00,11:00,Power Systems,F107,306
+Tuesday,14:00,15:00,Database Systems,F109,305
+Wednesday,09:00,10:00,Fluid Mechanics,F104,401
+Wednesday,11:00,12:00,Thermodynamics,F108,402
+Wednesday,13:00,14:00,Microprocessors,F110,301
+Thursday,10:00,11:00,Data Structures,F101,201
+Thursday,15:00,16:00,AI & ML,F102,202
+Friday,09:00,10:00,Digital Signals,F106,301
+Friday,11:00,12:00,Database Systems,F109,201

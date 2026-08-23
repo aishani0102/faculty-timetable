@@ -6,7 +6,7 @@ from langchain.agents import initialize_agent, AgentType
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from tools import timetable_tool, report_tool, clash_tool, rag_tool, room_status
+from tools import timetable_tool, report_tool, clash_tool, rag_tool, room_status, rooms_available
 
 HF_TOKEN = os.environ["HF_TOKEN"]
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
@@ -90,11 +90,21 @@ def _room(room: str, day: str, time: str) -> str:
     return f"Room {data['room']} is occupied: {data['occupants']}."
 
 
+def _rooms_available(day: str, time: str) -> str:
+    try:
+        data = rooms_available(day, time)
+    except ValueError as e:
+        return f"Could not run that lookup: {e}"
+    except psycopg2.Error:
+        return "Could not run that lookup: the day or time given wasn't understood."
+    return f"Free rooms: {data['free']}. Occupied: {data['occupied']}."
+
+
 tools = [
     StructuredTool.from_function(
         func=_timetable,
         name="timetable_lookup",
-        description="Find who is teaching, or who is free, at a given day and time.",
+        description="Find which faculty are teaching, or which faculty are free, at a given day and time. Not for room availability.",
         args_schema=TimetableInput,
     ),
     StructuredTool.from_function(
@@ -117,8 +127,14 @@ tools = [
     StructuredTool.from_function(
         func=_room,
         name="room_status",
-        description="Check who is in a specific room at a given day and time, or whether it's free. Use this for any question about a room number.",
+        description="Check who is in one specific, already-named room at a given day and time, or whether it's free.",
         args_schema=RoomInput,
+    ),
+    StructuredTool.from_function(
+        func=_rooms_available,
+        name="rooms_available",
+        description="List which rooms are free, and which are occupied, at a given day and time. Use this for questions like 'which rooms are available'.",
+        args_schema=TimetableInput,
     ),
 ]
 

@@ -74,6 +74,29 @@ def timetable_tool(day: str, time: str):
     return {"busy": busy, "free": free}
 
 
+def rooms_available(day: str, time: str):
+    """Which rooms are occupied, and which are free, at a given day and time."""
+    day = normalize_day(day)
+    time = normalize_time(time)
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT t.room, f.name, t.course
+            FROM timetable t JOIN faculty_workload f USING (faculty_id)
+            WHERE t.day = %s AND t.start_time <= %s AND t.end_time > %s
+            """,
+            (day, time, time),
+        )
+        occupied = cur.fetchall()
+        occupied_rooms = {row[0] for row in occupied}
+
+        cur.execute("SELECT DISTINCT room FROM timetable ORDER BY room")
+        free = [row[0] for row in cur.fetchall() if row[0] not in occupied_rooms]
+    conn.close()
+    return {"occupied": occupied, "free": free}
+
+
 def normalize_room(room: str) -> str:
     return re.sub(r"(?i)^room\s*", "", room.strip()).strip()
 

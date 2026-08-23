@@ -74,6 +74,53 @@ def timetable_tool(day: str, time: str):
     return {"busy": busy, "free": free}
 
 
+def rooms_available(day: str, time: str):
+    """Which rooms are occupied, and which are free, at a given day and time."""
+    day = normalize_day(day)
+    time = normalize_time(time)
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT t.room, f.name, t.course
+            FROM timetable t JOIN faculty_workload f USING (faculty_id)
+            WHERE t.day = %s AND t.start_time <= %s AND t.end_time > %s
+            """,
+            (day, time, time),
+        )
+        occupied = cur.fetchall()
+        occupied_rooms = {row[0] for row in occupied}
+
+        cur.execute("SELECT DISTINCT room FROM timetable ORDER BY room")
+        free = [row[0] for row in cur.fetchall() if row[0] not in occupied_rooms]
+    conn.close()
+    return {"occupied": occupied, "free": free}
+
+
+def normalize_room(room: str) -> str:
+    return re.sub(r"(?i)^room\s*", "", room.strip()).strip()
+
+
+def room_status(room: str, day: str, time: str):
+    """Who is in a given room at a given day and time, or whether it's free. Flags a double-booking if more than one class is scheduled there."""
+    room = normalize_room(room)
+    day = normalize_day(day)
+    time = normalize_time(time)
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT f.name, t.course
+            FROM timetable t JOIN faculty_workload f USING (faculty_id)
+            WHERE t.room = %s AND t.day = %s AND t.start_time <= %s AND t.end_time > %s
+            """,
+            (room, day, time, time),
+        )
+        occupants = cur.fetchall()
+    conn.close()
+    return {"room": room, "occupants": occupants, "clash": len(occupants) > 1}
+
+
 TITLE_PREFIX_RE = re.compile(r"^(dr|prof|mr|mrs|ms)\.?\s*", re.IGNORECASE)
 
 

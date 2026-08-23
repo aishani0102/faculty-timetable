@@ -6,7 +6,7 @@ from langchain.agents import initialize_agent, AgentType
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from tools import timetable_tool, report_tool, clash_tool, rag_tool
+from tools import timetable_tool, report_tool, clash_tool, rag_tool, room_status, rooms_available
 
 HF_TOKEN = os.environ["HF_TOKEN"]
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
@@ -34,6 +34,12 @@ class ReportInput(BaseModel):
 
 class RagInput(BaseModel):
     query: str = Field(description="The policy question to search for")
+
+
+class RoomInput(BaseModel):
+    room: str = Field(description="Room number, e.g. 305")
+    day: str = Field(description="Day of the week, e.g. Tuesday")
+    time: str = Field(description="24-hour time, e.g. 14:00")
 
 
 def _timetable(day: str, time: str) -> str:
@@ -70,11 +76,35 @@ def _rag(query: str) -> str:
         return "Could not search policies due to a database error."
 
 
+def _room(room: str, day: str, time: str) -> str:
+    try:
+        data = room_status(room, day, time)
+    except ValueError as e:
+        return f"Could not check that room: {e}"
+    except psycopg2.Error:
+        return "Could not check that room: the room, day, or time given wasn't understood."
+    if not data["occupants"]:
+        return f"Room {data['room']} is free at that time."
+    if data["clash"]:
+        return f"Room {data['room']} is double-booked at that time: {data['occupants']}."
+    return f"Room {data['room']} is occupied: {data['occupants']}."
+
+
+def _rooms_available(day: str, time: str) -> str:
+    try:
+        data = rooms_available(day, time)
+    except ValueError as e:
+        return f"Could not run that lookup: {e}"
+    except psycopg2.Error:
+        return "Could not run that lookup: the day or time given wasn't understood."
+    return f"Free rooms: {data['free']}. Occupied: {data['occupied']}."
+
+
 tools = [
     StructuredTool.from_function(
         func=_timetable,
         name="timetable_lookup",
-        description="Find who is teaching, or who is free, at a given day and time.",
+        description="Find which faculty are teaching, or which faculty are free, at a given day and time. Not for room availability.",
         args_schema=TimetableInput,
     ),
     StructuredTool.from_function(
@@ -93,6 +123,18 @@ tools = [
         name="policy_search",
         description="Look up university scheduling policies and rules.",
         args_schema=RagInput,
+    ),
+    StructuredTool.from_function(
+        func=_room,
+        name="room_status",
+        description="Check who is in one specific, already-named room at a given day and time, or whether it's free.",
+        args_schema=RoomInput,
+    ),
+    StructuredTool.from_function(
+        func=_rooms_available,
+        name="rooms_available",
+        description="List which rooms are free, and which are occupied, at a given day and time. Use this for questions like 'which rooms are available'.",
+        args_schema=TimetableInput,
     ),
 ]
 

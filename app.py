@@ -1,9 +1,11 @@
 import streamlit as st
+import pandas as pd
+import altair as alt
 
 from agent import answer
-from tools import dataset_summary
+from tools import dataset_summary, get_connection, report_tool, clash_tool
 
-st.set_page_config(page_title="Faculty Workload & Timetable Agent", page_icon="🗓️", layout="centered")
+st.set_page_config(page_title="Faculty Workload & Timetable Agent", page_icon="🗓️", layout="wide")
 
 st.markdown(
     """
@@ -14,20 +16,62 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+# --- Helper Functions for Data Visibility ---
+@st.cache_data(ttl=60)  # Caches the data for 60 seconds so it doesn't query the DB on every click
+def get_faculty_directory():
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute("SELECT name, department, course, hours_per_week FROM faculty_workload ORDER BY name")
+        rows = cur.fetchall()
+    conn.close()
+    return pd.DataFrame(rows, columns=["Name", "Department", "Course", "Hours/Week"])
+
+
+@st.cache_data(ttl=60)
+def get_department_workload():
+    # report_tool() with no args returns total hours per department
+    rows = report_tool()
+    return pd.DataFrame(rows, columns=["Department", "Total Hours"]).set_index("Department")
+# ------------------------------------------
+
 with st.sidebar:
-    st.header("Dataset")
+    st.header("Dataset Overview")
     try:
         stats = dataset_summary()
-        st.metric("Faculty", stats["faculty"])
-        st.metric("Departments", stats["departments"])
-        st.metric("Weekly slots", stats["slots"])
+        cols = st.columns(3)
+        cols[0].metric("Faculty", stats["faculty"])
+        cols[1].metric("Departments", stats["departments"])
+        cols[2].metric("Slots", stats["slots"])
+
+        st.divider()
+        st.subheader("Faculty Directory")
+        st.dataframe(get_faculty_directory(), hide_index=True, use_container_width=True)
+
+        st.divider()
+        st.subheader("Workload by Department")
+
+        # Custom chart that forces the Y-axis to start at 0
+        df_chart = get_department_workload().reset_index()
+        chart = alt.Chart(df_chart).mark_bar().encode(
+            x=alt.X('Department', axis=alt.Axis(labelAngle=0)),
+            y=alt.Y('Total Hours', scale=alt.Scale(domainMin=0))
+        )
+        st.altair_chart(chart, use_container_width=True)
     except Exception:
         st.caption("Set DATABASE_URL and run ingest.py to see dataset stats here.")
-    st.divider()
-    st.caption("LangChain agent over Postgres + pgvector. No fine-tuning.")
 
-st.title("🗓️ Faculty Workload & Timetable Agent")
+st.title("Faculty Workload & Timetable Agent")
 st.caption("Ask about faculty availability, workload, or scheduling clashes, in plain English.")
+
+# --- Passive Clash Alert System ---
+try:
+    clashes = clash_tool()
+    if clashes:
+        st.warning(f"⚠️ **Alert:** Detected {len(clashes)} scheduling clash(es) in the current timetable. Ask the agent to 'find the scheduling clashes' for details and fixes!")
+except Exception:
+    pass
+# ----------------------------------
 
 EXAMPLES = [
     "What is Prof. Sharma's workload this week?",

@@ -1,5 +1,6 @@
 import os
 
+import psycopg2
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain.agents import initialize_agent, AgentType
 from langchain.tools import StructuredTool
@@ -36,23 +37,37 @@ class RagInput(BaseModel):
 
 
 def _timetable(day: str, time: str) -> str:
-    data = timetable_tool(day, time)
+    try:
+        data = timetable_tool(day, time)
+    except ValueError as e:
+        return f"Could not run that lookup: {e}"
+    except psycopg2.Error:
+        return "Could not run that lookup: the day or time given wasn't understood. Try e.g. day='Tuesday', time='14:00'."
     return f"Busy: {data['busy']}. Free: {data['free']}."
 
 
 def _report(department: str = "", faculty_name: str = "") -> str:
-    rows = report_tool(department=department or None, faculty_name=faculty_name or None)
+    try:
+        rows = report_tool(department=department or None, faculty_name=faculty_name or None)
+    except psycopg2.Error:
+        return "Could not run that report: the department or faculty name given wasn't understood."
     total = sum(row[-1] for row in rows) if rows else 0
     return f"Rows: {rows}. Total hours: {total}."
 
 
 def _clash(query: str = "") -> str:
-    clashes = clash_tool()
+    try:
+        clashes = clash_tool()
+    except psycopg2.Error:
+        return "Could not check for clashes due to a database error."
     return f"Clashes: {clashes}" if clashes else "No clashes found in the current timetable."
 
 
 def _rag(query: str) -> str:
-    return " | ".join(rag_tool(query))
+    try:
+        return " | ".join(rag_tool(query))
+    except psycopg2.Error:
+        return "Could not search policies due to a database error."
 
 
 tools = [
